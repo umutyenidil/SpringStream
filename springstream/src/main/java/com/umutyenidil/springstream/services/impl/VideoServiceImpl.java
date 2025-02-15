@@ -7,8 +7,6 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -99,8 +97,11 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    public Video get(String videoId) {
-        return null;
+    public Video get(
+            String videoId
+    ) {
+        return videoRepository.findById(videoId)
+                .orElseThrow(() -> new RuntimeException("Video not found"));
     }
 
     @Override
@@ -110,6 +111,6 @@ public class VideoServiceImpl implements VideoService {
 
     @Override
     public List<Video> getAll() {
-        return List.of();
+        return videoRepository.findAll();
     }
 }

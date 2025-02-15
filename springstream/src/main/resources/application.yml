@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:mysql://mysql:3306/stream_db
+    url: jdbc:mysql://localhost:3306/stream_db
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -10,3 +10,10 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+files:
+  video: videos/

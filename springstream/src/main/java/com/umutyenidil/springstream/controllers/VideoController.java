@@ -1,6 +1,7 @@
 package com.umutyenidil.springstream.controllers;
 
 import ch.qos.logback.core.boolex.EvaluationException;
+import com.umutyenidil.springstream.common.Constants;
 import com.umutyenidil.springstream.entities.Video;
 import com.umutyenidil.springstream.payload.CustomMessage;
 import com.umutyenidil.springstream.services.VideoService;
@@ -8,6 +9,7 @@ import com.umutyenidil.springstream.services.impl.VideoServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -127,15 +129,21 @@ public class VideoController {
 
         rangeStart = Long.parseLong(ranges[0]);
 
-        if (range.length() > 1) {
-            rangeEnd = Long.parseLong(ranges[1]);
-        } else {
+        rangeEnd = rangeStart + Constants.CHUNK_SIZE - 1;
+
+        if (rangeEnd >= fileLength) {
             rangeEnd = fileLength - 1;
         }
 
-        if (rangeEnd > fileLength - 1) {
-            rangeEnd = fileLength - 1;
-        }
+//        if (range.length() > 1) {
+//            rangeEnd = Long.parseLong(ranges[1]);
+//        } else {
+//            rangeEnd = fileLength - 1;
+//        }
+//
+//        if (rangeEnd > fileLength - 1) {
+//            rangeEnd = fileLength - 1;
+//        }
 
         InputStream inputStream;
 
@@ -143,26 +151,29 @@ public class VideoController {
             inputStream = Files.newInputStream(path);
             inputStream.skip(rangeStart);
 
+            long contentLength = rangeEnd - rangeStart + 1;
+
+            byte[] data = new byte[(int) contentLength];
+            int read = inputStream.read(data, 0, data.length);
+
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Content-Range", "bytes=" + rangeStart + "-" + rangeEnd + "/" + fileLength);
+            headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+            headers.add("Pragma", "no-cache");
+            headers.add("Expires", "0");
+            headers.add("X-Content-Type-Options", "nosniff");
+            headers.setContentLength(contentLength);
+
+            return ResponseEntity
+                    .status(HttpStatus.PARTIAL_CONTENT)
+                    .headers(headers)
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .body(new ByteArrayResource(data));
         } catch (IOException e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .build();
         }
-
-        long contentLength = rangeEnd - rangeStart + 1;
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Content-Range", "bytes=" + rangeStart + "-" + rangeEnd + "/" + fileLength);
-        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
-        headers.add("Pragma", "no-cache");
-        headers.add("Expires", "0");
-        headers.add("X-Content-Type-Options", "nosniff");
-        headers.setContentLength(contentLength);
-
-        return ResponseEntity
-                .status(HttpStatus.PARTIAL_CONTENT)
-                .headers(headers)
-                .contentType(MediaType.parseMediaType(contentType))
-                .body(new InputStreamResource(inputStream));
     }
 }

@@ -17,3 +17,4 @@ spring:
 
 files:
   video: videos/
+  hsl: videos_hsl/

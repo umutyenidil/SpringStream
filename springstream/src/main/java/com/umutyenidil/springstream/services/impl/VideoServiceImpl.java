@@ -31,9 +31,21 @@ public class VideoServiceImpl implements VideoService {
     @Value("${files.video}")
     private String DIR;
 
+    @Value("${files.hsl}")
+    private String HSL_DIR;
+
     @PostConstruct
     public void init() {
+
         File file = new File(DIR);
+
+        File file1 = new File(HSL_DIR);
+
+        if (!file1.exists()) {
+            boolean folderCreated = file1.mkdirs();
+
+            log.info("HSL Folder {}", folderCreated ? "created" : "not created");
+        }
 
         if (!file.exists()) {
             boolean folderCreated = file.mkdirs();
@@ -86,6 +98,8 @@ public class VideoServiceImpl implements VideoService {
             video.setFilePath(path.toString());
 
             videoRepository.save(video);
+
+            this.processVideo(video.getVideoId());
         } catch (IOException e) {
             e.printStackTrace();
         } catch (Exception e) {
@@ -112,5 +126,42 @@ public class VideoServiceImpl implements VideoService {
     @Override
     public List<Video> getAll() {
         return videoRepository.findAll();
+    }
+
+    @Override
+    public String processVideo(
+            String videoId
+    ) {
+
+        try {
+            Video video = this.get(videoId);
+
+            String videoFilePath = video.getFilePath();
+
+            Path videoPath = Paths.get(videoFilePath);
+
+            Path outputPath = Paths.get(HSL_DIR, videoId);
+
+            Files.createDirectories(outputPath);
+
+            String ffmpegCmd = String.format(
+                    "ffmpeg -i \"%s\" -c:v libx264 -c:a aac -strict -2 -f hls -hls_time 10 -hls_list_size 0 -hls_segment_filename \"%s/segment_%%3d.ts\"  \"%s/master.m3u8\" ",
+                    videoPath, outputPath, outputPath
+            );
+
+            ProcessBuilder processBuilder = new ProcessBuilder("cmd", "/c", ffmpegCmd);
+            processBuilder.inheritIO();
+
+            Process process = processBuilder.start();
+            int exit = process.waitFor();
+            if (exit != 0) {
+                throw new RuntimeException("Video processing failed");
+            }
+
+            return videoId;
+
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 }
